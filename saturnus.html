@@ -1,0 +1,1989 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Planet Saturnus Partikel 3D - Eksplorasi Kosmik Interaktif</title>
+  <meta name="description"
+    content="Visualisasi 3D interaktif planet Saturnus yang terbentuk dari puluhan ribu titik partikel berkilau saat layar diklik.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    :root {
+      --primary: #f5cf75;
+      --primary-rgb: 245, 207, 117;
+      --secondary: #d49a3d;
+      --accent: #ffd98a;
+      --bg-dark: #040308;
+      --glass-bg: rgba(16, 14, 24, 0.72);
+      --glass-border: rgba(245, 207, 117, 0.22);
+      --glass-glow: rgba(245, 207, 117, 0.12);
+      --text-main: #fbf7ee;
+      --text-muted: #b8b09f;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text-main);
+      touch-action: manipulation;
+    }
+
+    /* 3D Canvas */
+    #webgl-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #webgl-canvas:active {
+      cursor: grabbing;
+    }
+
+    /* Cosmic Ambient Glows */
+    .cosmic-nebula {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(140px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.38;
+      transition: opacity 2s ease, transform 10s ease-in-out;
+    }
+
+    .nebula-1 {
+      width: 650px;
+      height: 650px;
+      top: 15%;
+      left: 10%;
+      background: radial-gradient(circle, rgba(230, 160, 45, 0.45) 0%, rgba(200, 110, 20, 0.1) 60%, transparent 80%);
+      animation: floatNebula 18s infinite alternate ease-in-out;
+    }
+
+    .nebula-2 {
+      width: 800px;
+      height: 800px;
+      bottom: 8%;
+      right: 10%;
+      background: radial-gradient(circle, rgba(90, 45, 170, 0.4) 0%, rgba(30, 15, 80, 0.08) 60%, transparent 80%);
+      animation: floatNebula 24s infinite alternate-reverse ease-in-out;
+    }
+
+    @keyframes floatNebula {
+      0% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      100% {
+        transform: translate(50px, -40px) scale(1.15);
+      }
+    }
+
+    /* Click Wave Ripple */
+    .click-ripple {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 5;
+      transform: translate(-50%, -50%) scale(0);
+      border: 2px solid rgba(var(--primary-rgb), 0.9);
+      box-shadow: 0 0 30px rgba(var(--primary-rgb), 0.7), inset 0 0 20px rgba(var(--primary-rgb), 0.45);
+      animation: rippleAnim 1.25s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+    }
+
+    @keyframes rippleAnim {
+      0% {
+        width: 10px;
+        height: 10px;
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(0.2);
+      }
+
+      100% {
+        width: 520px;
+        height: 520px;
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    /* UI Layer */
+    .ui-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+    }
+
+    /* Glass Panels */
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), inset 0 0 16px var(--glass-glow);
+      pointer-events: auto;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Top Navigation Header */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      gap: 16px;
+    }
+
+    .brand-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 22px;
+      border-radius: 999px;
+    }
+
+    .pulse-core {
+      position: relative;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 14px var(--primary);
+    }
+
+    .pulse-ring {
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1.5px solid var(--primary);
+      animation: corePulse 2s infinite ease-out;
+    }
+
+    @keyframes corePulse {
+      0% {
+        transform: scale(0.6);
+        opacity: 1;
+      }
+
+      100% {
+        transform: scale(1.8);
+        opacity: 0;
+      }
+    }
+
+    .brand-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--primary);
+      background: linear-gradient(135deg, #ffffff 30%, var(--primary) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status-tag {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: rgba(var(--primary-rgb), 0.15);
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+
+    .action-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: 1px solid var(--glass-border);
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .icon-btn:hover {
+      background: rgba(var(--primary-rgb), 0.22);
+      border-color: var(--primary);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.35);
+    }
+
+    .icon-btn:active {
+      transform: translateY(0);
+    }
+
+    .icon-btn.active {
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      color: #1a1002;
+      border-color: var(--accent);
+      box-shadow: 0 0 18px rgba(var(--primary-rgb), 0.55);
+    }
+
+    .tooltip {
+      position: absolute;
+      bottom: -34px;
+      left: 50%;
+      transform: translateX(-50%) translateY(5px);
+      font-size: 0.72rem;
+      padding: 4px 9px;
+      background: rgba(10, 8, 16, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 6px;
+      color: #fff;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s ease;
+    }
+
+    .icon-btn:hover .tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Initial Overlay Prompt (Centered Click Guide) */
+    .hero-prompt-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      pointer-events: auto;
+      z-index: 12;
+      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 640px;
+      padding: 42px 36px;
+      cursor: pointer;
+    }
+
+    .hero-prompt-container.formed {
+      opacity: 0;
+      transform: translate(-50%, -46%) scale(0.92);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 18px;
+      border-radius: 999px;
+      background: rgba(var(--primary-rgb), 0.12);
+      border: 1px solid rgba(var(--primary-rgb), 0.35);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.2);
+    }
+
+    .hero-title {
+      font-family: 'Cinzel', serif;
+      font-size: 3.4rem;
+      font-weight: 900;
+      letter-spacing: 6px;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      color: var(--accent);
+      background: linear-gradient(180deg, #ffffff 20%, #ffe9b5 70%, #d89f41 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 35px rgba(245, 207, 117, 0.4));
+    }
+
+    .hero-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      line-height: 1.65;
+      font-weight: 400;
+    }
+
+    /* Pulsing CTA Trigger Button */
+    .click-trigger-btn {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 38px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.35), rgba(var(--primary-rgb), 0.15));
+      border: 1.5px solid var(--primary);
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      box-shadow: 0 0 35px rgba(var(--primary-rgb), 0.4), inset 0 0 20px rgba(var(--primary-rgb), 0.2);
+      transition: all 0.35s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .click-trigger-btn::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(60deg, transparent 40%, rgba(255, 255, 255, 0.3) 50%, transparent 60%);
+      transform: rotate(30deg);
+      animation: shineSweep 4s infinite linear;
+    }
+
+    @keyframes shineSweep {
+      0% {
+        transform: translateX(-100%) rotate(30deg);
+      }
+
+      100% {
+        transform: translateX(100%) rotate(30deg);
+      }
+    }
+
+    .click-trigger-btn:hover {
+      transform: translateY(-3px) scale(1.04);
+      box-shadow: 0 0 50px rgba(var(--primary-rgb), 0.65), inset 0 0 30px rgba(var(--primary-rgb), 0.4);
+      background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.5), rgba(var(--primary-rgb), 0.25));
+    }
+
+    .click-trigger-btn i {
+      font-size: 1.15rem;
+      color: var(--accent);
+      animation: fingerBounce 1.5s infinite alternate ease-in-out;
+    }
+
+    @keyframes fingerBounce {
+      0% {
+        transform: translateY(0);
+      }
+
+      100% {
+        transform: translateY(-4px);
+      }
+    }
+
+    /* Floating Hint Badge at Bottom */
+    .bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .stat-cards-container {
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .stat-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 18px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .stat-pill strong {
+      color: var(--primary);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.95rem;
+    }
+
+    .interaction-hints {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 22px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      pointer-events: auto;
+    }
+
+    .hint-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hint-item i {
+      color: var(--primary);
+      font-size: 0.85rem;
+    }
+
+    /* Floating Mode Controller Pill */
+    .modes-pill {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 999px;
+      pointer-events: auto;
+      z-index: 15;
+    }
+
+    .mode-tab-btn {
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+    }
+
+    .mode-tab-btn:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .mode-tab-btn.active {
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      color: #1a0f02;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.4);
+    }
+
+    /* Modal / Drawer for Planet Info */
+    .info-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      width: 90%;
+      max-width: 540px;
+      padding: 34px;
+      z-index: 30;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .info-modal.open {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .modal-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.35rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .close-modal-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+
+    .close-modal-btn:hover {
+      color: #fff;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .info-box {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .info-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .info-val {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--primary);
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .info-desc {
+      font-size: 0.88rem;
+      line-height: 1.65;
+      color: #d1cbdc;
+    }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 25;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Toast Notification */
+    .toast-pill {
+      position: absolute;
+      top: 92px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      padding: 10px 24px;
+      border-radius: 999px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--primary);
+      color: #fff;
+      font-size: 0.86rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.35);
+    }
+
+    .toast-pill.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .ui-container {
+        padding: 16px;
+      }
+
+      .brand-title {
+        font-size: 0.92rem;
+        letter-spacing: 1px;
+      }
+
+      .hero-title {
+        font-size: 2.2rem;
+        letter-spacing: 3px;
+      }
+
+      .hero-subtitle {
+        font-size: 0.92rem;
+      }
+
+      .stat-cards-container {
+        display: none;
+      }
+
+      .interaction-hints {
+        display: none;
+      }
+
+      .modes-pill {
+        bottom: 16px;
+        width: calc(100% - 32px);
+        justify-content: space-between;
+      }
+
+      .mode-tab-btn {
+        padding: 8px 10px;
+        font-size: 0.75rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Ambient Cosmic Nebulae -->
+  <div class="cosmic-nebula nebula-1"></div>
+  <div class="cosmic-nebula nebula-2"></div>
+
+  <!-- 3D WebGL Canvas -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- UI Layer -->
+  <div class="ui-container">
+
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="brand-badge glass-panel">
+        <div class="pulse-core">
+          <div class="pulse-ring"></div>
+        </div>
+        <span class="brand-title">SATURNUS</span>
+        <span class="status-tag" id="statusBadge">Kosmos Mengambang</span>
+      </div>
+
+      <div class="action-group">
+        <!-- Sound Toggle -->
+        <button class="icon-btn" id="audioToggle" aria-label="Suara Kosmik">
+          <i class="fa-solid fa-volume-xmark" id="audioIcon"></i>
+          <span class="tooltip">Suara Kosmik</span>
+        </button>
+
+        <!-- Color Palette Toggle -->
+        <button class="icon-btn" id="paletteBtn" aria-label="Tema Warna">
+          <i class="fa-solid fa-palette"></i>
+          <span class="tooltip">Ganti Spektrum</span>
+        </button>
+
+        <!-- Information Modal Trigger -->
+        <button class="icon-btn" id="infoBtn" aria-label="Informasi Saturnus">
+          <i class="fa-solid fa-circle-info"></i>
+          <span class="tooltip">Fakta Saturnus</span>
+        </button>
+
+        <!-- Screenshot Button -->
+        <button class="icon-btn" id="captureBtn" aria-label="Ambil Foto">
+          <i class="fa-solid fa-camera"></i>
+          <span class="tooltip">Simpan Gambar</span>
+        </button>
+
+        <!-- Fullscreen Button -->
+        <button class="icon-btn" id="fullscreenBtn" aria-label="Layar Penuh">
+          <i class="fa-solid fa-expand"></i>
+          <span class="tooltip">Layar Penuh</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Center Hero Prompt (Visible before first click) -->
+    <div class="hero-prompt-container glass-panel" id="heroPrompt">
+      <div class="hero-badge">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Simulasi Partikel Kosmik 3D
+      </div>
+      <h1 class="hero-title">PLANET SATURNUS</h1>
+      <p class="hero-subtitle">
+        Puluhan ribu partikel stardust purba sedang mengambang di kehampaan luar angkasa. Klik di mana saja untuk
+        mengikat gravitasi kosmik dan membentuk planet Saturnus beserta mahkota cincinnya.
+      </p>
+      <button class="click-trigger-btn" id="initialClickBtn">
+        <i class="fa-solid fa-hand-pointer"></i>
+        <span>KLIK UNTUK MEMBENTUK SATURNUS</span>
+      </button>
+    </div>
+
+    <!-- Bottom Controls & Hints -->
+    <footer class="bottom-bar">
+      <!-- Particle Stats -->
+      <div class="stat-cards-container">
+        <div class="stat-pill glass-panel">
+          <i class="fa-solid fa-circle-nodes" style="color: var(--primary);"></i>
+          <span>Total Partikel: <strong id="particleCountLabel">78,000</strong></span>
+        </div>
+        <div class="stat-pill glass-panel">
+          <i class="fa-solid fa-ring" style="color: var(--accent);"></i>
+          <span>Cincin: <strong>Cassini, A, B, C</strong></span>
+        </div>
+      </div>
+
+      <!-- Interaction Modes Tab -->
+      <div class="modes-pill glass-panel">
+        <button class="mode-tab-btn active" data-mode="saturn">
+          <i class="fa-solid fa-globe"></i> Saturnus
+        </button>
+        <button class="mode-tab-btn" data-mode="explode">
+          <i class="fa-solid fa-burst"></i> Ledakan
+        </button>
+        <button class="mode-tab-btn" data-mode="vortex">
+          <i class="fa-solid fa-atom"></i> Pusaran Vortex
+        </button>
+        <button class="mode-tab-btn" data-mode="rings-only">
+          <i class="fa-solid fa-compact-disc"></i> Cincin Saja
+        </button>
+      </div>
+
+      <!-- Navigation & Gesture Hints -->
+      <div class="interaction-hints glass-panel">
+        <div class="hint-item">
+          <i class="fa-solid fa-arrow-pointer"></i>
+          <span>Putar 3D: Geser Mouse / Jari</span>
+        </div>
+        <div class="hint-item">
+          <i class="fa-solid fa-magnifying-glass-plus"></i>
+          <span>Zoom: Scroll</span>
+        </div>
+        <div class="hint-item">
+          <i class="fa-solid fa-meteor"></i>
+          <span>Klik Layar: Riak Gravitasi</span>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Planet Info Modal -->
+  <div class="modal-backdrop" id="modalBackdrop"></div>
+  <div class="info-modal glass-panel" id="infoModal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <i class="fa-solid fa-ring"></i> Saturnus (Sang Permata Tata Surya)
+      </div>
+      <button class="close-modal-btn" id="closeModalBtn">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="info-grid">
+      <div class="info-box">
+        <div class="info-label">Jarak dari Matahari</div>
+        <div class="info-val">1.43 Milyar km</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">Diameter Khatulistiwa</div>
+        <div class="info-val">120,536 km (9.5× Bumi)</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">Rentang Cincin Utama</div>
+        <div class="info-val">282,000 km</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">Satelit Alami Dikenal</div>
+        <div class="info-val">146 Bulan (Titan, Enceladus)</div>
+      </div>
+    </div>
+    <p class="info-desc">
+      Cincin Saturnus terbentuk dari milyaran partikel bongkahan es air dan debu mikroskopis purba. Celah pemisah ikonik
+      berjarak 4.800 km yang membagi Cincin A dan B disebut <strong>Devisi Cassini</strong> (Cassini Division), tercipta
+      akibat tarikan resonansi gravitasi bulan Mimas.
+    </p>
+  </div>
+
+  <!-- Toast Message -->
+  <div class="toast-pill" id="toastPill">
+    <i class="fa-solid fa-circle-check" style="color: var(--primary);"></i>
+    <span id="toastMsg">Planet Saturnus terbentuk sempurna!</span>
+  </div>
+
+  <!-- Three.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    /* ====================================================================
+       PLANET SATURNUS PARTIKEL 3D
+       Interaktif, Terbentuk Melalui Gravitasi saat Layar Diklik
+       ==================================================================== */
+
+    // --- Built-in Fallback for OrbitControls (jika CDN luar terhambat) ---
+    if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls === 'undefined') {
+      THREE.OrbitControls = function (camera, domElement) {
+        this.camera = camera;
+        this.domElement = domElement || document;
+        this.isMouseDown = false;
+        this.prevMouse = { x: 0, y: 0 };
+        this.spherical = {
+          radius: camera.position.length() || 22,
+          theta: Math.atan2(camera.position.x, camera.position.z),
+          phi: Math.acos(Math.max(-1, Math.min(1, camera.position.y / (camera.position.length() || 22))))
+        };
+        this.autoRotate = true;
+        this.autoRotateSpeed = 0.45;
+        this.enableDamping = true;
+
+        const onDown = (clientX, clientY) => {
+          this.isMouseDown = true;
+          this.prevMouse.x = clientX;
+          this.prevMouse.y = clientY;
+        };
+
+        const onMove = (clientX, clientY) => {
+          if (!this.isMouseDown) return;
+          const dx = clientX - this.prevMouse.x;
+          const dy = clientY - this.prevMouse.y;
+          this.spherical.theta -= dx * 0.005;
+          this.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.spherical.phi - dy * 0.005));
+          this.prevMouse.x = clientX;
+          this.prevMouse.y = clientY;
+        };
+
+        const onUp = () => { this.isMouseDown = false; };
+
+        this.domElement.addEventListener('mousedown', (e) => onDown(e.clientX, e.clientY));
+        window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', onUp);
+
+        this.domElement.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 1) onDown(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        window.addEventListener('touchmove', (e) => {
+          if (e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        window.addEventListener('touchend', onUp);
+
+        this.domElement.addEventListener('wheel', (e) => {
+          this.spherical.radius = Math.max(6, Math.min(55, this.spherical.radius + e.deltaY * 0.02));
+        }, { passive: true });
+
+        this.update = function () {
+          if (this.autoRotate && !this.isMouseDown) {
+            this.spherical.theta += this.autoRotateSpeed * 0.004;
+          }
+          const sinPhiRadius = this.spherical.radius * Math.sin(this.spherical.phi);
+          this.camera.position.x = sinPhiRadius * Math.sin(this.spherical.theta);
+          this.camera.position.y = this.spherical.radius * Math.cos(this.spherical.phi);
+          this.camera.position.z = sinPhiRadius * Math.cos(this.spherical.theta);
+          this.camera.lookAt(0, 0, 0);
+        };
+      };
+    }
+
+    // --- Configurations & Physics Parameters ---
+    const CONFIG = {
+      globeParticles: 28000,
+      ringParticles: 50000,
+      starParticles: 2200,
+      globeRadius: 3.5,
+      flatteningY: 0.88, // Oblateness Saturnus
+      ringInnerRadius: 4.3,
+      ringOuterRadius: 8.8,
+      ringTilt: 26.73 * (Math.PI / 180), // 26.73°
+      baseSpeed: 0.0018
+    };
+
+    let scene, camera, renderer, controls;
+    let particleGeometry, particleMaterial, particleSystem;
+    let starSystem;
+    let moons = [];
+
+    // Particle Array Buffers
+    const totalParticles = CONFIG.globeParticles + CONFIG.ringParticles;
+    let currentPositions;
+    let targetPositions;
+    let scatterPositions;
+    let vortexPositions;
+    let ringOnlyPositions;
+    let particleColors;
+    let particleSizes;
+    let particleOriginalTypes; // 0 = Globe, 1 = Ring
+
+    // Specialized Globe coordinate arrays for dynamic atmospheric band rotation
+    let globePhis;
+    let globeThetas;
+    let globeSpeeds;
+
+    // Specialized Ring coordinate arrays for Keplerian orbits
+    let ringAngles;
+    let ringSpeeds;
+    let ringRadii;
+
+    // State Variables
+    let isFormed = false;
+    let currentMode = 'scatter'; // 'scatter', 'saturn', 'explode', 'vortex', 'rings-only'
+    let currentSchemeIndex = 0;
+
+    // 5 Magnificent Color Palettes
+    const COLOR_SCHEMES = [
+      {
+        name: "Emas Saturnus (Astronomi Klasik)",
+        primaryHex: "#f5cf75",
+        accentHex: "#ffd98a",
+        globe: [
+          new THREE.Color("#fff2cb"), // Equator zone
+          new THREE.Color("#f1caa0"), // Tropical zone
+          new THREE.Color("#d49e52"), // Temperate belt
+          new THREE.Color("#9b6b2c"), // Polar storm belt
+          new THREE.Color("#4a3215")  // Polar vortex
+        ],
+        rings: {
+          inner: new THREE.Color("#baa073"),  // C ring (Crepe)
+          dense: new THREE.Color("#fde2a6"),  // B ring (bright golden champagne)
+          outer: new THREE.Color("#cfab70"),  // A ring
+          fringe: new THREE.Color("#82663c") // F ring
+        }
+      },
+      {
+        name: "Cyberpunk Neon",
+        primaryHex: "#00f0ff",
+        accentHex: "#ff007b",
+        globe: [
+          new THREE.Color("#00f0ff"),
+          new THREE.Color("#7000ff"),
+          new THREE.Color("#ff007b"),
+          new THREE.Color("#35006b"),
+          new THREE.Color("#0d0026")
+        ],
+        rings: {
+          inner: new THREE.Color("#7000ff"),
+          dense: new THREE.Color("#00f0ff"),
+          outer: new THREE.Color("#ff007b"),
+          fringe: new THREE.Color("#00ffb7")
+        }
+      },
+      {
+        name: "Komet Es Kristal",
+        primaryHex: "#7df9ff",
+        accentHex: "#ffffff",
+        globe: [
+          new THREE.Color("#ffffff"),
+          new THREE.Color("#c2f3ff"),
+          new THREE.Color("#7df9ff"),
+          new THREE.Color("#2a7fb8"),
+          new THREE.Color("#0e2b4f")
+        ],
+        rings: {
+          inner: new THREE.Color("#55b0de"),
+          dense: new THREE.Color("#ffffff"),
+          outer: new THREE.Color("#a1e8ff"),
+          fringe: new THREE.Color("#2f6f94")
+        }
+      },
+      {
+        name: "Surya Berapi (Solar Flare)",
+        primaryHex: "#ff7b00",
+        accentHex: "#ffdd44",
+        globe: [
+          new THREE.Color("#ffffff"),
+          new THREE.Color("#ffdd44"),
+          new THREE.Color("#ff7b00"),
+          new THREE.Color("#cc2200"),
+          new THREE.Color("#590900")
+        ],
+        rings: {
+          inner: new THREE.Color("#ff5500"),
+          dense: new THREE.Color("#ffea75"),
+          outer: new THREE.Color("#ff8800"),
+          fringe: new THREE.Color("#801400")
+        }
+      },
+      {
+        name: "Bioluminescence Emerald",
+        primaryHex: "#39ff14",
+        accentHex: "#b5ff88",
+        globe: [
+          new THREE.Color("#e6ffb8"),
+          new THREE.Color("#39ff14"),
+          new THREE.Color("#00cc66"),
+          new THREE.Color("#006633"),
+          new THREE.Color("#002914")
+        ],
+        rings: {
+          inner: new THREE.Color("#00a86b"),
+          dense: new THREE.Color("#b5ff88"),
+          outer: new THREE.Color("#39ff14"),
+          fringe: new THREE.Color("#004d26")
+        }
+      }
+    ];
+
+    // --- Pure Web Audio API Ambient Synthesizer ---
+    class CosmicAudio {
+      constructor() {
+        this.ctx = null;
+        this.enabled = false;
+        this.droneOsc = null;
+        this.droneGain = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggle() {
+        this.init();
+        this.enabled = !this.enabled;
+        if (this.enabled) {
+          this.startCosmicAmbience();
+          showToast("Suara Kosmik: Aktif ♫");
+        } else {
+          this.stopCosmicAmbience();
+          showToast("Suara Kosmik: Senyap");
+        }
+        return this.enabled;
+      }
+
+      startCosmicAmbience() {
+        if (!this.ctx || this.droneOsc) return;
+
+        // Sub-bass atmospheric drone
+        this.droneOsc = this.ctx.createOscillator();
+        this.droneGain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        this.droneOsc.type = 'sine';
+        this.droneOsc.frequency.setValueAtTime(55, this.ctx.currentTime);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(130, this.ctx.currentTime);
+
+        this.droneGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+        this.droneGain.gain.exponentialRampToValueAtTime(0.09, this.ctx.currentTime + 3);
+
+        this.droneOsc.connect(filter);
+        filter.connect(this.droneGain);
+        this.droneGain.connect(this.ctx.destination);
+
+        this.droneOsc.start();
+      }
+
+      stopCosmicAmbience() {
+        if (this.droneGain) {
+          this.droneGain.gain.linearRampToValueAtTime(0.0001, this.ctx.currentTime + 1);
+          setTimeout(() => {
+            if (this.droneOsc) {
+              this.droneOsc.stop();
+              this.droneOsc.disconnect();
+              this.droneOsc = null;
+              this.droneGain = null;
+            }
+          }, 1100);
+        }
+      }
+
+      playAssembleChime() {
+        if (!this.ctx) this.init();
+        const now = this.ctx.currentTime;
+
+        // Gravitational bass sweep
+        const sweepOsc = this.ctx.createOscillator();
+        const sweepGain = this.ctx.createGain();
+        sweepOsc.type = 'triangle';
+        sweepOsc.frequency.setValueAtTime(65, now);
+        sweepOsc.frequency.exponentialRampToValueAtTime(240, now + 1.2);
+        sweepGain.gain.setValueAtTime(0.2, now);
+        sweepGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.6);
+        sweepOsc.connect(sweepGain);
+        sweepGain.connect(this.ctx.destination);
+        sweepOsc.start(now);
+        sweepOsc.stop(now + 1.6);
+
+        // Harmonic Celestial Chimes (Pentatonic arpeggios)
+        const notes = [440, 554.37, 659.25, 830.61, 987.77, 1318.5];
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+
+          gain.gain.setValueAtTime(0.001, now + idx * 0.14);
+          gain.gain.linearRampToValueAtTime(0.08, now + idx * 0.14 + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.14 + 2.2);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.14);
+          osc.stop(now + idx * 0.14 + 2.3);
+        });
+      }
+
+      playRipplePulse() {
+        if (!this.ctx) this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(620, now);
+        osc.frequency.exponentialRampToValueAtTime(260, now + 0.45);
+
+        gain.gain.setValueAtTime(0.07, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.55);
+      }
+    }
+
+    const cosmicSound = new CosmicAudio();
+
+    // --- Procedural Glowing Particle Texture ---
+    function createGlowSprite() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      grad.addColorStop(0.25, 'rgba(255, 242, 205, 0.9)');
+      grad.addColorStop(0.55, 'rgba(230, 180, 80, 0.35)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(32, 32, 32, 0, Math.PI * 2);
+      ctx.fill();
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+      return texture;
+    }
+
+    // --- Initialize Three.js Scene ---
+    function initScene() {
+      const canvas = document.getElementById('webgl-canvas');
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      // 1. Scene
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x040308, 0.012);
+
+      // 2. Camera
+      camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      camera.position.set(0, 8.5, 21);
+
+      // 3. Renderer
+      renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance',
+        preserveDrawingBuffer: true
+      });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.25;
+
+      // 4. Orbit Controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 5;
+      controls.maxDistance = 55;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.45;
+      controls.enablePan = false;
+
+      // 5. Build Environments & Particles
+      createStarfield();
+      generateSaturnData();
+      createParticleSystem();
+      createMoons();
+
+      // 6. Setup Interactivity
+      window.addEventListener('resize', onWindowResize);
+      setupInteractions();
+
+      // 7. Render Loop
+      animate();
+    }
+
+    // --- Starfield Background ---
+    function createStarfield() {
+      const starGeo = new THREE.BufferGeometry();
+      const starPositions = new Float32Array(CONFIG.starParticles * 3);
+      const starColors = new Float32Array(CONFIG.starParticles * 3);
+
+      const colorTypes = [
+        new THREE.Color('#ffffff'),
+        new THREE.Color('#d4e8ff'),
+        new THREE.Color('#ffeacc'),
+        new THREE.Color('#ffd2b8')
+      ];
+
+      for (let i = 0; i < CONFIG.starParticles; i++) {
+        const i3 = i * 3;
+        const radius = 120 + Math.random() * 80;
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+
+        starPositions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+        starPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+        starPositions[i3 + 2] = radius * Math.cos(phi);
+
+        const col = colorTypes[Math.floor(Math.random() * colorTypes.length)];
+        starColors[i3] = col.r;
+        starColors[i3 + 1] = col.g;
+        starColors[i3 + 2] = col.b;
+      }
+
+      starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+      starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
+      const starMat = new THREE.PointsMaterial({
+        size: 0.85,
+        map: createGlowSprite(),
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      starSystem = new THREE.Points(starGeo, starMat);
+      scene.add(starSystem);
+    }
+
+    // --- Mathematical Structure of Saturn ---
+    function generateSaturnData() {
+      currentPositions = new Float32Array(totalParticles * 3);
+      targetPositions = new Float32Array(totalParticles * 3);
+      scatterPositions = new Float32Array(totalParticles * 3);
+      vortexPositions = new Float32Array(totalParticles * 3);
+      ringOnlyPositions = new Float32Array(totalParticles * 3);
+      particleColors = new Float32Array(totalParticles * 3);
+      particleSizes = new Float32Array(totalParticles);
+      particleOriginalTypes = new Uint8Array(totalParticles);
+
+      globePhis = new Float32Array(CONFIG.globeParticles);
+      globeThetas = new Float32Array(CONFIG.globeParticles);
+      globeSpeeds = new Float32Array(CONFIG.globeParticles);
+
+      ringAngles = new Float32Array(CONFIG.ringParticles);
+      ringSpeeds = new Float32Array(CONFIG.ringParticles);
+      ringRadii = new Float32Array(CONFIG.ringParticles);
+
+      const tilt = CONFIG.ringTilt;
+      const cosTilt = Math.cos(tilt);
+      const sinTilt = Math.sin(tilt);
+      const scheme = COLOR_SCHEMES[currentSchemeIndex];
+
+      // 1. Globe (Saturn Body)
+      for (let i = 0; i < CONFIG.globeParticles; i++) {
+        const i3 = i * 3;
+        particleOriginalTypes[i] = 0; // Globe
+
+        // Fibonacci Sphere Algorithm
+        const phi = Math.acos(1 - 2 * (i + 0.5) / CONFIG.globeParticles);
+        const goldenRatio = (1 + Math.sqrt(5)) / 2;
+        const theta = 2 * Math.PI * i / goldenRatio;
+
+        globePhis[i] = phi;
+        globeThetas[i] = theta;
+
+        // Differential gas giant rotation speed (equator orbits faster)
+        const latNorm = Math.abs(Math.cos(phi));
+        globeSpeeds[i] = 0.0028 + (1 - latNorm) * 0.0016;
+
+        const r = CONFIG.globeRadius;
+        const gx = r * Math.sin(phi) * Math.cos(theta);
+        const gy = r * Math.cos(phi) * CONFIG.flatteningY;
+        const gz = r * Math.sin(phi) * Math.sin(theta);
+
+        // Axial Tilt
+        const tiltedX = gx;
+        const tiltedY = gy * cosTilt - gz * sinTilt;
+        const tiltedZ = gy * sinTilt + gz * cosTilt;
+
+        targetPositions[i3] = tiltedX;
+        targetPositions[i3 + 1] = tiltedY;
+        targetPositions[i3 + 2] = tiltedZ;
+
+        // Dispersed primordial cloud (Initial Scatter)
+        const sDist = 18 + Math.random() * 26;
+        const sTheta = Math.random() * Math.PI * 2;
+        const sPhi = Math.acos(2 * Math.random() - 1);
+        scatterPositions[i3] = sDist * Math.sin(sPhi) * Math.cos(sTheta);
+        scatterPositions[i3 + 1] = sDist * Math.sin(sPhi) * Math.sin(sTheta);
+        scatterPositions[i3 + 2] = sDist * Math.cos(sPhi);
+
+        // Vortex coordinates
+        const vAngle = sTheta * 4;
+        const vRadius = 2 + (i / CONFIG.globeParticles) * 16;
+        vortexPositions[i3] = vRadius * Math.cos(vAngle);
+        vortexPositions[i3 + 1] = (Math.random() - 0.5) * 4;
+        vortexPositions[i3 + 2] = vRadius * Math.sin(vAngle);
+
+        // Ring-only coordinate (inner halo)
+        const haloRadius = 2.6 + Math.random() * 1.8;
+        const hTheta = Math.random() * Math.PI * 2;
+        ringOnlyPositions[i3] = haloRadius * Math.cos(hTheta);
+        ringOnlyPositions[i3 + 1] = haloRadius * Math.sin(hTheta) * sinTilt;
+        ringOnlyPositions[i3 + 2] = haloRadius * Math.sin(hTheta) * cosTilt;
+
+        // Start scattered
+        currentPositions[i3] = scatterPositions[i3];
+        currentPositions[i3 + 1] = scatterPositions[i3 + 1];
+        currentPositions[i3 + 2] = scatterPositions[i3 + 2];
+
+        // Atmosphere bands
+        let pColor;
+        if (latNorm < 0.20) pColor = scheme.globe[0];
+        else if (latNorm < 0.45) pColor = scheme.globe[1];
+        else if (latNorm < 0.72) pColor = scheme.globe[2];
+        else if (latNorm < 0.90) pColor = scheme.globe[3];
+        else pColor = scheme.globe[4];
+
+        const jitter = (Math.random() - 0.5) * 0.08;
+        particleColors[i3] = Math.min(1, Math.max(0, pColor.r + jitter));
+        particleColors[i3 + 1] = Math.min(1, Math.max(0, pColor.g + jitter));
+        particleColors[i3 + 2] = Math.min(1, Math.max(0, pColor.b + jitter));
+
+        particleSizes[i] = 0.44 + Math.random() * 0.24;
+      }
+
+      // 2. Rings (Concentric Accretion Disk with Cassini Division)
+      const ringStart = CONFIG.globeParticles;
+      const minR = CONFIG.ringInnerRadius;
+      const maxR = CONFIG.ringOuterRadius;
+
+      for (let j = 0; j < CONFIG.ringParticles; j++) {
+        const idx = ringStart + j;
+        const i3 = idx * 3;
+        particleOriginalTypes[idx] = 1; // Ring
+
+        let radius;
+        // Rejection sampling for Cassini division (gap 6.55 - 6.95) & dense B-ring
+        while (true) {
+          radius = minR + Math.random() * (maxR - minR);
+
+          // Cassini Gap filter
+          if (radius >= 6.55 && radius <= 6.95) {
+            if (Math.random() > 0.03) continue; // 97% clear gap!
+          }
+
+          // Encke Gap filter
+          if (radius >= 7.88 && radius <= 7.95) {
+            if (Math.random() > 0.06) continue;
+          }
+
+          // B-Ring high density bias
+          if (radius >= 5.3 && radius <= 6.55) {
+            break;
+          }
+
+          // C-ring subtle transparency
+          if (radius < 5.3 && Math.random() > 0.65) {
+            continue;
+          }
+
+          break;
+        }
+
+        const angle = Math.random() * Math.PI * 2;
+        const thickness = (Math.random() - 0.5) * 0.08;
+
+        ringRadii[j] = radius;
+        ringAngles[j] = angle;
+        // Keplerian orbital speed: omega ~ r^-1.5
+        ringSpeeds[j] = 0.048 * Math.pow(radius, -1.5);
+
+        const unX = radius * Math.cos(angle);
+        const unY = thickness;
+        const unZ = radius * Math.sin(angle);
+
+        targetPositions[i3] = unX;
+        targetPositions[i3 + 1] = unY * cosTilt - unZ * sinTilt;
+        targetPositions[i3 + 2] = unY * sinTilt + unZ * cosTilt;
+
+        // Dispersed cloud position
+        const sDist = 15 + Math.random() * 30;
+        const sTheta = Math.random() * Math.PI * 2;
+        const sPhi = Math.acos(2 * Math.random() - 1);
+        scatterPositions[i3] = sDist * Math.sin(sPhi) * Math.cos(sTheta);
+        scatterPositions[i3 + 1] = sDist * Math.sin(sPhi) * Math.sin(sTheta);
+        scatterPositions[i3 + 2] = sDist * Math.cos(sPhi);
+
+        // Vortex position
+        const vAngle = angle * 2 + radius;
+        vortexPositions[i3] = radius * 1.5 * Math.cos(vAngle);
+        vortexPositions[i3 + 1] = Math.sin(radius * 3) * 1.5;
+        vortexPositions[i3 + 2] = radius * 1.5 * Math.sin(vAngle);
+
+        // Ring-only coordinate
+        ringOnlyPositions[i3] = targetPositions[i3] * 1.12;
+        ringOnlyPositions[i3 + 1] = targetPositions[i3 + 1] * 1.12;
+        ringOnlyPositions[i3 + 2] = targetPositions[i3 + 2] * 1.12;
+
+        // Start scattered
+        currentPositions[i3] = scatterPositions[i3];
+        currentPositions[i3 + 1] = scatterPositions[i3 + 1];
+        currentPositions[i3 + 2] = scatterPositions[i3 + 2];
+
+        // Color coding by ring zone
+        let ringCol;
+        if (radius < 5.3) ringCol = scheme.rings.inner;
+        else if (radius <= 6.55) ringCol = scheme.rings.dense; // B-ring
+        else if (radius <= 8.4) ringCol = scheme.rings.outer;  // A-ring
+        else ringCol = scheme.rings.fringe;                    // F-ring
+
+        const rJitter = (Math.random() - 0.5) * 0.06;
+        particleColors[i3] = Math.min(1, Math.max(0, ringCol.r + rJitter));
+        particleColors[i3 + 1] = Math.min(1, Math.max(0, ringCol.g + rJitter));
+        particleColors[i3 + 2] = Math.min(1, Math.max(0, ringCol.b + rJitter));
+
+        particleSizes[idx] = 0.38 + Math.random() * 0.28;
+      }
+    }
+
+    // --- Build BufferGeometry System ---
+    function createParticleSystem() {
+      particleGeometry = new THREE.BufferGeometry();
+      particleGeometry.setAttribute('position', new THREE.BufferAttribute(currentPositions, 3));
+      particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+      particleGeometry.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+
+      particleMaterial = new THREE.PointsMaterial({
+        size: 0.54,
+        map: createGlowSprite(),
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+      scene.add(particleSystem);
+    }
+
+    // --- Orbiting Moons ---
+    function createMoons() {
+      const moonData = [
+        { name: "Titan", distance: 13.5, size: 0.26, color: 0xffd27d, speed: 0.007, angle: 0 },
+        { name: "Enceladus", distance: 10.2, size: 0.16, color: 0xffffff, speed: 0.013, angle: 2.4 },
+        { name: "Mimas", distance: 9.3, size: 0.12, color: 0xe0e0e0, speed: 0.018, angle: 4.1 }
+      ];
+
+      moonData.forEach(data => {
+        const geo = new THREE.SphereGeometry(data.size, 16, 16);
+        const mat = new THREE.MeshBasicMaterial({ color: data.color });
+        const mesh = new THREE.Mesh(geo, mat);
+
+        const haloMat = new THREE.SpriteMaterial({
+          map: createGlowSprite(),
+          color: data.color,
+          transparent: true,
+          opacity: 0.85,
+          blending: THREE.AdditiveBlending
+        });
+        const sprite = new THREE.Sprite(haloMat);
+        sprite.scale.set(data.size * 5.2, data.size * 5.2, 1);
+        mesh.add(sprite);
+
+        scene.add(mesh);
+        moons.push({ mesh, data });
+      });
+    }
+
+    // --- Color Scheme Transition ---
+    function applyColorScheme(schemeIdx) {
+      currentSchemeIndex = schemeIdx % COLOR_SCHEMES.length;
+      const scheme = COLOR_SCHEMES[currentSchemeIndex];
+
+      document.documentElement.style.setProperty('--primary', scheme.primaryHex);
+      document.documentElement.style.setProperty('--accent', scheme.accentHex);
+
+      const colorAttr = particleGeometry.attributes.color;
+      const colors = colorAttr.array;
+
+      for (let i = 0; i < CONFIG.globeParticles; i++) {
+        const i3 = i * 3;
+        const latNorm = Math.abs(Math.cos(globePhis[i]));
+        let pColor;
+        if (latNorm < 0.2) pColor = scheme.globe[0];
+        else if (latNorm < 0.45) pColor = scheme.globe[1];
+        else if (latNorm < 0.72) pColor = scheme.globe[2];
+        else if (latNorm < 0.9) pColor = scheme.globe[3];
+        else pColor = scheme.globe[4];
+
+        const jitter = (Math.random() - 0.5) * 0.06;
+        colors[i3] = Math.min(1, Math.max(0, pColor.r + jitter));
+        colors[i3 + 1] = Math.min(1, Math.max(0, pColor.g + jitter));
+        colors[i3 + 2] = Math.min(1, Math.max(0, pColor.b + jitter));
+      }
+
+      for (let j = 0; j < CONFIG.ringParticles; j++) {
+        const idx = CONFIG.globeParticles + j;
+        const i3 = idx * 3;
+        const radius = ringRadii[j];
+
+        let ringCol;
+        if (radius < 5.3) ringCol = scheme.rings.inner;
+        else if (radius <= 6.55) ringCol = scheme.rings.dense;
+        else if (radius <= 8.4) ringCol = scheme.rings.outer;
+        else ringCol = scheme.rings.fringe;
+
+        const jitter = (Math.random() - 0.5) * 0.06;
+        colors[i3] = Math.min(1, Math.max(0, ringCol.r + jitter));
+        colors[i3 + 1] = Math.min(1, Math.max(0, ringCol.g + jitter));
+        colors[i3 + 2] = Math.min(1, Math.max(0, ringCol.b + jitter));
+      }
+
+      colorAttr.needsUpdate = true;
+      showToast(`Tema Warna: ${scheme.name}`);
+    }
+
+    // --- Gravitational Shockwave Ripple ---
+    function triggerGravitationalWave(clientX, clientY) {
+      const ripple = document.createElement('div');
+      ripple.className = 'click-ripple';
+      ripple.style.left = `${clientX}px`;
+      ripple.style.top = `${clientY}px`;
+      document.body.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 1250);
+
+      cosmicSound.playRipplePulse();
+
+      // Ripple physical displacement on dots
+      if (isFormed) {
+        const posAttr = particleGeometry.attributes.position;
+        const pos = posAttr.array;
+        const wave = 1.6;
+
+        for (let i = 0; i < totalParticles; i += 4) {
+          const i3 = i * 3;
+          pos[i3] += (Math.random() - 0.5) * wave;
+          pos[i3 + 1] += (Math.random() - 0.5) * wave;
+          pos[i3 + 2] += (Math.random() - 0.5) * wave;
+        }
+        posAttr.needsUpdate = true;
+      }
+    }
+
+    // --- Core Action: Form Saturn On Click ---
+    function formSaturn() {
+      if (isFormed && currentMode === 'saturn') return;
+
+      isFormed = true;
+      currentMode = 'saturn';
+
+      // Update UI
+      const hero = document.getElementById('heroPrompt');
+      if (hero) hero.classList.add('formed');
+
+      const statusBadge = document.getElementById('statusBadge');
+      if (statusBadge) {
+        statusBadge.textContent = "Saturnus Terbentuk";
+        statusBadge.style.background = "rgba(var(--primary-rgb), 0.28)";
+        statusBadge.style.color = "#ffffff";
+      }
+
+      document.querySelectorAll('.mode-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === 'saturn');
+      });
+
+      // Smooth camera transition into majestic view
+      tweenCamera(camera.position, { x: 0, y: 7.2, z: 18.2 }, 2200);
+
+      cosmicSound.init();
+      cosmicSound.playAssembleChime();
+      showToast("Partikel ditarik gravitasi: Saturnus terbentuk!");
+    }
+
+    // Camera Interpolation Helper
+    function tweenCamera(current, target, duration) {
+      const startX = current.x;
+      const startY = current.y;
+      const startZ = current.z;
+      const startTime = performance.now();
+
+      function step() {
+        const elapsed = performance.now() - startTime;
+        const t = Math.min(1, elapsed / duration);
+        const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+        current.x = startX + (target.x - startX) * ease;
+        current.y = startY + (target.y - startY) * ease;
+        current.z = startZ + (target.z - startZ) * ease;
+
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    // --- Switch Particle Dynamics Mode ---
+    function setInteractionMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.mode-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+
+      const statusBadge = document.getElementById('statusBadge');
+
+      if (mode === 'saturn') {
+        formSaturn();
+      } else if (mode === 'explode') {
+        isFormed = false;
+        if (statusBadge) statusBadge.textContent = "Supernova Menyebar";
+        cosmicSound.playAssembleChime();
+        showToast("Mode: Ledakan Partikel Kosmik");
+      } else if (mode === 'vortex') {
+        isFormed = true;
+        if (statusBadge) statusBadge.textContent = "Pusaran Gravitasi";
+        cosmicSound.playRipplePulse();
+        showToast("Mode: Pusaran Gravitasi Vortex");
+      } else if (mode === 'rings-only') {
+        isFormed = true;
+        if (statusBadge) statusBadge.textContent = "Cincin Akresi";
+        cosmicSound.playRipplePulse();
+        showToast("Mode: Cincin Tanpa Inti Planet");
+      }
+    }
+
+    // --- Toast Helper ---
+    let toastTimeout;
+    function showToast(message) {
+      const toast = document.getElementById('toastPill');
+      const toastMsg = document.getElementById('toastMsg');
+      if (!toast || !toastMsg) return;
+
+      toastMsg.textContent = message;
+      toast.classList.add('show');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2600);
+    }
+
+    // --- Event Listeners ---
+    function setupInteractions() {
+      const canvas = document.getElementById('webgl-canvas');
+      const heroBtn = document.getElementById('initialClickBtn');
+      const heroPrompt = document.getElementById('heroPrompt');
+
+      // Click on CTA Button
+      if (heroBtn) {
+        heroBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          triggerGravitationalWave(e.clientX, e.clientY);
+          formSaturn();
+        });
+      }
+
+      // Click on Hero Box
+      if (heroPrompt) {
+        heroPrompt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          triggerGravitationalWave(e.clientX, e.clientY);
+          formSaturn();
+        });
+      }
+
+      // Click anywhere on canvas / screen
+      canvas.addEventListener('pointerdown', (e) => {
+        triggerGravitationalWave(e.clientX, e.clientY);
+        if (!isFormed) {
+          formSaturn();
+        }
+      });
+
+      // Mode navigation tabs
+      document.querySelectorAll('.mode-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setInteractionMode(btn.dataset.mode);
+        });
+      });
+
+      // Audio Toggle
+      const audioToggle = document.getElementById('audioToggle');
+      const audioIcon = document.getElementById('audioIcon');
+      if (audioToggle) {
+        audioToggle.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const active = cosmicSound.toggle();
+          audioToggle.classList.toggle('active', active);
+          audioIcon.className = active ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+        });
+      }
+
+      // Color Palette Toggle
+      const paletteBtn = document.getElementById('paletteBtn');
+      if (paletteBtn) {
+        paletteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          applyColorScheme(currentSchemeIndex + 1);
+        });
+      }
+
+      // Info Modal
+      const infoBtn = document.getElementById('infoBtn');
+      const infoModal = document.getElementById('infoModal');
+      const modalBackdrop = document.getElementById('modalBackdrop');
+      const closeModalBtn = document.getElementById('closeModalBtn');
+
+      function openModal() {
+        infoModal.classList.add('open');
+        modalBackdrop.classList.add('open');
+      }
+
+      function closeModal() {
+        infoModal.classList.remove('open');
+        modalBackdrop.classList.remove('open');
+      }
+
+      if (infoBtn) infoBtn.addEventListener('click', (e) => { e.stopPropagation(); openModal(); });
+      if (closeModalBtn) closeModalBtn.addEventListener('click', (e) => { e.stopPropagation(); closeModal(); });
+      if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
+
+      // Screenshot Capture
+      const captureBtn = document.getElementById('captureBtn');
+      if (captureBtn) {
+        captureBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          renderer.render(scene, camera);
+          const dataURL = renderer.domElement.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.download = `saturnus-partikel-${Date.now()}.png`;
+          link.href = dataURL;
+          link.click();
+          showToast("Foto Saturnus berhasil disimpan!");
+        });
+      }
+
+      // Fullscreen Toggle
+      const fullscreenBtn = document.getElementById('fullscreenBtn');
+      if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => { });
+            fullscreenBtn.classList.add('active');
+          } else {
+            document.exitFullscreen().catch(() => { });
+            fullscreenBtn.classList.remove('active');
+          }
+        });
+      }
+    }
+
+    // --- Window Resize ---
+    function onWindowResize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    }
+
+    // --- Main Physics & Animation Loop ---
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
+
+      // 1. Update Camera Controls
+      controls.update();
+
+      // 2. Rotate Starfield
+      if (starSystem) {
+        starSystem.rotation.y = time * 0.01;
+      }
+
+      // 3. Dynamic Particle Physics
+      const posAttr = particleGeometry.attributes.position;
+      const pos = posAttr.array;
+      const lerpSpeed = 0.048; // Smooth gravitational attraction damping
+
+      const tilt = CONFIG.ringTilt;
+      const cosTilt = Math.cos(tilt);
+      const sinTilt = Math.sin(tilt);
+      const ringStart = CONFIG.globeParticles;
+
+      if (currentMode === 'saturn') {
+        // A. Dynamic Globe Particles (Gas giant differential atmospheric rotation)
+        const r = CONFIG.globeRadius;
+        for (let i = 0; i < CONFIG.globeParticles; i++) {
+          const i3 = i * 3;
+          globeThetas[i] += globeSpeeds[i];
+          const th = globeThetas[i];
+          const ph = globePhis[i];
+
+          const gx = r * Math.sin(ph) * Math.cos(th);
+          const gy = r * Math.cos(ph) * CONFIG.flatteningY;
+          const gz = r * Math.sin(ph) * Math.sin(th);
+
+          targetPositions[i3] = gx;
+          targetPositions[i3 + 1] = gy * cosTilt - gz * sinTilt;
+          targetPositions[i3 + 2] = gy * sinTilt + gz * cosTilt;
+        }
+
+        // B. Dynamic Ring Particles (Astronomical Keplerian Orbit)
+        for (let j = 0; j < CONFIG.ringParticles; j++) {
+          const idx = ringStart + j;
+          const i3 = idx * 3;
+
+          ringAngles[j] += ringSpeeds[j];
+          const a = ringAngles[j];
+          const rad = ringRadii[j];
+
+          const unX = rad * Math.cos(a);
+          const unY = Math.sin(a * 4 + time * 1.5) * 0.018; // Micro vertical wave
+          const unZ = rad * Math.sin(a);
+
+          targetPositions[i3] = unX;
+          targetPositions[i3 + 1] = unY * cosTilt - unZ * sinTilt;
+          targetPositions[i3 + 2] = unY * sinTilt + unZ * cosTilt;
+        }
+
+        // Interpolate towards target positions
+        for (let i = 0; i < totalParticles * 3; i++) {
+          pos[i] += (targetPositions[i] - pos[i]) * lerpSpeed;
+        }
+
+      } else if (currentMode === 'explode') {
+        // Supernova dispersion
+        for (let i = 0; i < totalParticles * 3; i++) {
+          pos[i] += (scatterPositions[i] - pos[i]) * 0.038;
+        }
+
+      } else if (currentMode === 'vortex') {
+        // Swirling Gravitational Singularity
+        for (let i = 0; i < totalParticles; i++) {
+          const i3 = i * 3;
+          const px = vortexPositions[i3];
+          const pz = vortexPositions[i3 + 2];
+          const ang = Math.atan2(pz, px) + 0.018;
+          const rad = Math.sqrt(px * px + pz * pz);
+
+          vortexPositions[i3] = rad * Math.cos(ang);
+          vortexPositions[i3 + 2] = rad * Math.sin(ang);
+
+          pos[i3] += (vortexPositions[i3] - pos[i3]) * lerpSpeed;
+          pos[i3 + 1] += (vortexPositions[i3 + 1] - pos[i3 + 1]) * lerpSpeed;
+          pos[i3 + 2] += (vortexPositions[i3 + 2] - pos[i3 + 2]) * lerpSpeed;
+        }
+
+      } else if (currentMode === 'rings-only') {
+        // Ring disk without globe
+        for (let i = 0; i < totalParticles * 3; i++) {
+          pos[i] += (ringOnlyPositions[i] - pos[i]) * lerpSpeed;
+        }
+      }
+
+      posAttr.needsUpdate = true;
+
+      // 4. Update Orbiting Moons
+      moons.forEach(({ mesh, data }) => {
+        data.angle += data.speed;
+        const mx = data.distance * Math.cos(data.angle);
+        const mz = data.distance * Math.sin(data.angle);
+
+        mesh.position.x = mx;
+        mesh.position.y = mz * sinTilt * 0.7;
+        mesh.position.z = mz * cosTilt;
+      });
+
+      // 5. Render Scene
+      renderer.render(scene, camera);
+    }
+
+    // Run on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      initScene();
+    });
+  </script>
+</body>
+
+</html>
